@@ -1,0 +1,25 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick an iPhone simulator
+        run: |
+          id=$(xcrun simctl list devices available iPhone -j \
+            | python3 -c 'import json,sys; print(next(d["udid"] for r in json.load(sys.stdin)["devices"].values() for d in r))')
+          echo "SIMULATOR_ID=$id" >> "$GITHUB_ENV"
+      - name: Build and run unit tests
+        run: |
+          xcodebuild -version
+          xcodebuild test \
+            -project NearestPharmacy.xcodeproj \
+            -scheme NearestPharmacy \
+            -destination "id=$SIMULATOR_ID" \
+            CODE_SIGNING_ALLOWED=NO
