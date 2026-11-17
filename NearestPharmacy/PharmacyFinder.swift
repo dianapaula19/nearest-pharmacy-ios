@@ -22,15 +22,11 @@ final class PharmacyFinder {
     private(set) var state: State = .locating
     private(set) var origin: CLLocation?
     private(set) var selectedIndex = 0
-    /// Streets and buildings for the town view; nil until loaded, or if they couldn't be.
-    private(set) var town: Town?
     var address = ""
 
     private let search: any PharmacySearching
     private let locationProvider: any LocationProviding
-    private let townLoader: any TownLoading
     private let directions: any WalkingDirections
-    @ObservationIgnored private var router: StreetRouter?
     /// The directions request for the current selection; tests await it.
     @ObservationIgnored private(set) var directionsTask: Task<Void, Never>?
     @ObservationIgnored private var lastRequest: (() async throws -> CLLocation)?
@@ -39,12 +35,10 @@ final class PharmacyFinder {
     init(
         search: any PharmacySearching = MapKitPharmacySearch(),
         location: any LocationProviding = DeviceLocationProvider(),
-        town: any TownLoading = OverpassTownLoader(),
         directions: any WalkingDirections = MapKitWalkingDirections()
     ) {
         self.search = search
         self.locationProvider = location
-        self.townLoader = town
         self.directions = directions
     }
 
@@ -58,9 +52,14 @@ final class PharmacyFinder {
         pharmacies.indices.contains(selectedIndex) ? pharmacies[selectedIndex] : nil
     }
 
-    /// Walking route to the selected pharmacy: Apple Maps walking directions once they arrive; until
-    /// then (or if they fail) along the town's streets, and as a last resort a straight line.
+    /// Walking route to the selected pharmacy: Apple Maps walking directions once they arrive, a straight
+    /// line until then or if they fail.
     private(set) var route: [GeoPoint] = []
+
+    /// How far the walk is: along the route once there is one, otherwise as the crow flies.
+    var walkMeters: CLLocationDistance {
+        route.count > 2 ? route.length : selected?.distance ?? 0
+    }
 
     /// Picks a pharmacy by position, wrapping around at either end like a menu in the game.
     func select(_ index: Int) {
@@ -85,8 +84,7 @@ final class PharmacyFinder {
             route = []
             return
         }
-        let from = GeoPoint(origin.coordinate), to = GeoPoint(selected.coordinate)
-        route = router?.path(from: from, to: to) ?? [from, to]
+        route = [GeoPoint(origin.coordinate), GeoPoint(selected.coordinate)]
     }
 
     func useCurrentLocation() async {
@@ -126,8 +124,6 @@ final class PharmacyFinder {
         guard id == requestID else { return }
         self.origin = origin
         selectedIndex = 0
-        town = nil
-        router = nil
         route = []
         directionsTask?.cancel()
         state = .searching
@@ -141,16 +137,7 @@ final class PharmacyFinder {
         } catch {
             guard id == requestID else { return }
             state = .failed(Self.message(for: error))
-            return
         }
-
-        // The pharmacies are already on screen; the town fills in when its streets arrive.
-        guard case .loaded = state, let town = try? await townLoader.town(around: GeoPoint(origin.coordinate)),
-              id == requestID else { return }
-        router = StreetRouter(roads: town.roads)
-        self.town = town
-        // Directions beat the street route; only fill in while they're missing.
-        if route.count <= 2 { updateRoute() }
     }
 
     static func sorted(_ pharmacies: [Pharmacy], from origin: CLLocation) -> [Pharmacy] {

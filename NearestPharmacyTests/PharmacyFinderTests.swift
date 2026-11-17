@@ -38,19 +38,6 @@ final class MockLocation: LocationProviding {
 }
 
 @MainActor
-final class MockTown: TownLoading {
-    var result: Result<Town, Error>
-
-    init(_ result: Result<Town, Error> = .failure(URLError(.notConnectedToInternet))) {
-        self.result = result
-    }
-
-    func town(around center: GeoPoint) async throws -> Town {
-        try result.get()
-    }
-}
-
-@MainActor
 final class MockDirections: WalkingDirections {
     var result: Result<[GeoPoint], Error>
 
@@ -75,10 +62,9 @@ private func pharmacy(_ name: String, _ latitude: Double, _ longitude: Double) -
 private func makeFinder(
     _ search: MockSearch,
     location: MockLocation = MockLocation(.success(helsinki)),
-    town: MockTown = MockTown(),
     directions: MockDirections = MockDirections()
 ) -> PharmacyFinder {
-    PharmacyFinder(search: search, location: location, town: town, directions: directions)
+    PharmacyFinder(search: search, location: location, directions: directions)
 }
 
 @MainActor
@@ -119,29 +105,14 @@ struct PharmacyFinderTests {
         #expect(finder.selected?.name == "C")
     }
 
-    @Test func routesStraightWhenThereIsNoTownOrDirections() async {
+    @Test func routesStraightWhenThereAreNoDirections() async {
         let finder = makeFinder(MockSearch(.success([pharmacy("Near", 60.1700, 24.9390)])))
 
         await finder.useCurrentLocation()
         await finder.directionsTask?.value
 
-        #expect(finder.town == nil)
         #expect(finder.route == [GeoPoint(helsinki.coordinate), GeoPoint(lat: 60.1700, lon: 24.9390)])
-    }
-
-    @Test func routesAlongTheTownsStreets() async {
-        let corner = GeoPoint(lat: 60.1699, lon: 24.9390)
-        let streets = Town(
-            roads: [Town.Road(kind: .minor, nodes: [1, 2, 3], points: [GeoPoint(helsinki.coordinate), corner, GeoPoint(lat: 60.1700, lon: 24.9390)])],
-            buildings: []
-        )
-        let finder = makeFinder(MockSearch(.success([pharmacy("Near", 60.1700, 24.9390)])), town: MockTown(.success(streets)))
-
-        await finder.useCurrentLocation()
-        await finder.directionsTask?.value
-
-        #expect(finder.town != nil)
-        #expect(finder.route.contains(corner))
+        #expect(finder.walkMeters == finder.selected?.distance)
     }
 
     @Test func prefersRealWalkingDirections() async {
@@ -155,6 +126,20 @@ struct PharmacyFinderTests {
         await finder.directionsTask?.value
 
         #expect(finder.route.contains(bridge))
+        #expect(finder.walkMeters > finder.selected!.distance)
+    }
+
+    @Test func fetchesNewDirectionsForEachSelection() async {
+        let directions = MockDirections(.success([GeoPoint(lat: 1, lon: 1), GeoPoint(lat: 2, lon: 2), GeoPoint(lat: 3, lon: 3)]))
+        let finder = makeFinder(MockSearch(.success([pharmacy("A", 60.170, 24.939), pharmacy("B", 60.171, 24.939)])), directions: directions)
+        await finder.useCurrentLocation()
+        await finder.directionsTask?.value
+
+        directions.result = .success([GeoPoint(lat: 4, lon: 4), GeoPoint(lat: 5, lon: 5), GeoPoint(lat: 6, lon: 6)])
+        finder.select(1)
+        await finder.directionsTask?.value
+
+        #expect(finder.route.contains(GeoPoint(lat: 5, lon: 5)))
     }
 
     @Test func showsEmptyStateWhenNothingIsFound() async {

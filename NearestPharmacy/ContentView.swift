@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var finder = PharmacyFinder()
-    @AppStorage("player") private var player: Player = .leaf
 
     var body: some View {
         NavigationStack {
@@ -20,16 +19,6 @@ struct ContentView: View {
                 Task { await finder.searchAddress() }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Picker("Walk as", selection: $player) {
-                            ForEach(Player.allCases) { Text($0.name).tag($0) }
-                        }
-                    } label: {
-                        Sprite(name: player.asset, size: CGSize(width: 14, height: 19), scale: 1.5)
-                    }
-                    .accessibilityLabel("Walk as \(player.name)")
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Use My Location", systemImage: "location.fill") {
                         Task { await finder.useCurrentLocation() }
@@ -62,7 +51,7 @@ struct ContentView: View {
             }
         case .loaded:
             if let origin = finder.origin, let selected = finder.selected {
-                ResultsView(finder: finder, origin: origin, selected: selected, player: player)
+                ResultsView(finder: finder, origin: origin, selected: selected)
             }
         }
     }
@@ -84,14 +73,9 @@ private struct ResultsView: View {
     let finder: PharmacyFinder
     let origin: CLLocation
     let selected: Pharmacy
-    let player: Player
 
     private var pharmacies: [Pharmacy] { finder.pharmacies }
-
-    /// Length of the walk along the route, or the straight-line distance until there is one.
-    private var walkMeters: CLLocationDistance {
-        finder.route.count > 2 ? StreetRouter.length(of: finder.route) : selected.distance
-    }
+    private var walkMeters: CLLocationDistance { finder.walkMeters }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -99,7 +83,11 @@ private struct ResultsView: View {
             if finder.selectedIndex == 0, let tip = QuickerAlternative(nearest: pharmacies[0], others: Array(pharmacies.dropFirst())) {
                 TipView(tip: tip) { finder.select(pharmacies.firstIndex(of: tip.pharmacy) ?? 0) }
             }
-            MapSection(finder: finder, origin: origin, player: player)
+            RegularMap(finder: finder, origin: origin)
+                .frame(height: 340)
+                .clipShape(.rect(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.panelBorder, lineWidth: 4))
+                .background(RoundedRectangle(cornerRadius: 12).fill(Theme.panelShadow).offset(x: 8, y: 8))
             list
             Text("Steps and calories are estimates for an average adult. Crowd levels are simulated for fun.")
                 .font(Theme.font(13))
@@ -169,55 +157,7 @@ private struct ResultsView: View {
     }
 }
 
-private struct MapSection: View {
-    let finder: PharmacyFinder
-    let origin: CLLocation
-    let player: Player
-    @State private var showTown = true
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Group {
-                if showTown, let town = finder.town {
-                    TownView(
-                        town: town,
-                        origin: GeoPoint(origin.coordinate),
-                        pharmacies: finder.pharmacies,
-                        selectedIndex: finder.selectedIndex,
-                        route: finder.route,
-                        player: player,
-                        onSelect: finder.select
-                    )
-                } else {
-                    RegularMap(finder: finder, origin: origin)
-                }
-            }
-            .frame(height: 340)
-            .clipShape(.rect(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.panelBorder, lineWidth: 4))
-            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.panelShadow).offset(x: 8, y: 8))
-
-            if finder.town != nil {
-                HStack(spacing: 6) {
-                    Button("Town") { showTown = true }.opacity(showTown ? 1 : 0.6)
-                    Button("Map") { showTown = false }.opacity(showTown ? 0.6 : 1)
-                }
-                .buttonStyle(DialogueButtonStyle())
-                .padding(12)
-            } else {
-                Text("Building the town…")
-                    .font(Theme.font(14))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .dialogue(padding: 0)
-                    .fixedSize()
-                    .padding(12)
-            }
-        }
-    }
-}
-
-/// The regular Apple map with plain pins: no town, no route, no animation.
+/// The regular Apple map: pins for the pharmacies and the walking route to the selected one.
 private struct RegularMap: View {
     let finder: PharmacyFinder
     let origin: CLLocation
@@ -230,8 +170,12 @@ private struct RegularMap: View {
             }
             Marker("You", systemImage: "person.fill", coordinate: origin.coordinate)
                 .tint(.blue)
+            MapPolyline(coordinates: finder.route.map(\.coordinate))
+                .stroke(.blue, lineWidth: 5)
         }
-        .accessibilityLabel("Map of nearby pharmacies")
+        // Re-frame on every new selection so the whole walk is in view.
+        .id(finder.selectedIndex)
+        .accessibilityLabel("Map with the walking route to \(finder.selected?.name ?? "the pharmacy")")
     }
 }
 
