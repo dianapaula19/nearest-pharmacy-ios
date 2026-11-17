@@ -9,8 +9,8 @@ struct ContentView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(PolkaDots())
-                .navigationTitle("Hello Kitty's Pharmacies 🎀")
-                .searchable(text: $finder.address, placement: .navigationBarDrawer(displayMode: .always), prompt: "Address or city 🎀")
+                .navigationTitle("Hello Kitty's Pharmacies")
+                .searchable(text: $finder.address, placement: .navigationBarDrawer(displayMode: .always), prompt: "Address or city")
                 .onSubmit(of: .search) {
                     Task { await finder.searchAddress() }
                 }
@@ -28,16 +28,16 @@ struct ContentView: View {
     private var content: some View {
         switch finder.state {
         case .locating:
-            KittySays("Looking for where you are… 🎀", bouncing: true)
+            KittySays("Looking for where you are…", bouncing: true)
         case .searching:
-            KittySays("Checking every pharmacy nearby… ✿", bouncing: true)
+            KittySays("Checking every pharmacy nearby…", bouncing: true)
         case .needsAddress(let message):
-            KittySays("\(message) I'll find the closest one from there! 💕")
+            KittySays("\(message) I'll find the closest one from there!")
         case .empty:
-            KittySays("Oh no, no pharmacies within 30 km. Try another address? 🥺")
+            KittySays("Oh no, no pharmacies within 30 km. Try another address?")
         case .failed(let message):
-            KittySays("\(message) 😿") {
-                Button("Try Again ♡") {
+            KittySays(message) {
+                Button("Try Again") {
                     Task { await finder.retry() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -154,7 +154,7 @@ private struct ResultsView: View {
                     .listRowInsets(EdgeInsets())
             }
             if !others.isEmpty {
-                Section("Also Nearby 🎀") {
+                Section("Also Nearby") {
                     ForEach(others) { pharmacy in
                         PharmacyRow(pharmacy: pharmacy)
                     }
@@ -162,7 +162,7 @@ private struct ResultsView: View {
             }
             Section {
             } footer: {
-                Text("Steps and calories are estimates for an average adult. Crowd levels are simulated for fun ♡")
+                Text("Steps and calories are estimates for an average adult. Crowd levels are simulated for fun.")
                     .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
             }
@@ -176,7 +176,7 @@ private struct NearestPharmacyCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("🎀 Nearest pharmacy")
+            Text("Nearest pharmacy")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Text(pharmacy.name)
@@ -190,7 +190,7 @@ private struct NearestPharmacyCard: View {
                 Text(address)
                     .foregroundStyle(.secondary)
             }
-            Button("Directions 🎀", systemImage: "heart.fill", action: pharmacy.openDirections)
+            Button("Directions", systemImage: "heart.fill", action: pharmacy.openDirections)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
                 .padding(.top, 4)
@@ -209,9 +209,9 @@ private struct WalkStats: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Chip("🐾 \(Estimates.steps(distance).formatted()) steps")
-            Chip("🔥 \(Estimates.calories(distance)) kcal")
-            Chip("⏱️ \(Estimates.walkMinutes(distance)) min")
+            Chip("\(Estimates.steps(distance).formatted()) steps")
+            Chip("\(Estimates.calories(distance)) kcal")
+            Chip("\(Estimates.walkMinutes(distance)) min walk")
         }
         .accessibilityElement(children: .combine)
     }
@@ -235,7 +235,7 @@ private struct CrowdBadge: View {
     let crowd: Crowd
 
     var body: some View {
-        Text(text)
+        Label { Text(text) } icon: { Circle().frame(width: 7, height: 7) }
             .font(.footnote.bold())
             .foregroundStyle(color)
             .padding(.horizontal, 10)
@@ -261,9 +261,9 @@ private struct CrowdBadge: View {
 private extension Crowd.Level {
     var label: String {
         switch self {
-        case .quiet: "🌸 Quiet"
-        case .moderate: "🍓 A bit busy"
-        case .busy: "🐝 Busy"
+        case .quiet: "Quiet"
+        case .moderate: "A bit busy"
+        case .busy: "Busy"
         }
     }
 }
@@ -275,7 +275,7 @@ private struct TipView: View {
         Button(action: tip.pharmacy.openDirections) {
             HStack(spacing: 12) {
                 KittyPharmacist(width: 54)
-                Text("**Psst!** \(tip.pharmacy.name) is \(tip.extraMeters.formattedDistance) farther, but it's usually quieter right now. You'd probably be served about \(tip.minutesSaved) min sooner 💨")
+                Text("**Psst!** \(tip.pharmacy.name) is \(tip.extraMeters.formattedDistance) farther, but it's usually quieter right now. You'd probably be served about \(tip.minutesSaved) min sooner.")
                     .font(.subheadline)
                     .foregroundStyle(.primary)
             }
@@ -299,7 +299,7 @@ private struct PharmacyRow: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-                    Text("🐾 \(Estimates.steps(pharmacy.distance).formatted()) · 🔥 \(Estimates.calories(pharmacy.distance)) kcal · \(Crowd(key: pharmacy.crowdKey).level.label)")
+                    Text("\(Estimates.steps(pharmacy.distance).formatted()) steps · \(Estimates.calories(pharmacy.distance)) kcal · \(Crowd(key: pharmacy.crowdKey).level.label)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
