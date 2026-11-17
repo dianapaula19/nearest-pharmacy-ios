@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="Dr. Mochi, a cat pharmacist">
+  <!-- coat -->
+  <path d="M42 222c0-46 26-70 58-70s58 24 58 70z" fill="#ffffff" stroke="#3b2a33" stroke-width="4"/>
+  <path d="M100 152l-16 22 16 48 16-48z" fill="#ffd6e5" stroke="#3b2a33" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="122" y="182" width="22" height="22" rx="5" fill="#ffffff" stroke="#3b2a33" stroke-width="3"/>
+  <path d="M130 186h6v6h6v6h-6v6h-6v-6h-6v-6h6z" fill="#5cc9a7" transform="translate(-3 -3) scale(1)"/>
+  <!-- pill in paw -->
+  <g transform="rotate(-30 66 196)">
+    <rect x="46" y="186" width="40" height="18" rx="9" fill="#ffffff" stroke="#3b2a33" stroke-width="3.5"/>
+    <path d="M66 186h11a9 9 0 0 1 0 18H66z" fill="#ff8fb8" stroke="#3b2a33" stroke-width="3.5"/>
+  </g>
+  <circle cx="60" cy="206" r="11" fill="#ffffff" stroke="#3b2a33" stroke-width="4"/>
+  <!-- ears -->
+  <path d="M30 70 L40 14 L84 44 Z" fill="#ffffff" stroke="#3b2a33" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M41 56 L46 28 L68 44 Z" fill="#ffb3cf"/>
+  <path d="M170 70 L160 14 L116 44 Z" fill="#ffffff" stroke="#3b2a33" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M159 56 L154 28 L132 44 Z" fill="#ffb3cf"/>
+  <!-- head -->
+  <ellipse cx="100" cy="98" rx="76" ry="62" fill="#ffffff" stroke="#3b2a33" stroke-width="4.5"/>
+  <!-- pharmacist cap -->
+  <path d="M62 50 Q100 22 138 50 L132 62 Q100 48 68 62 Z" fill="#ffffff" stroke="#3b2a33" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M96 36h8v6h6v8h-6v6h-8v-6h-6v-8h6z" fill="#ff6fa3"/>
+  <!-- mint pill hair clip -->
+  <g transform="rotate(25 150 66)"><rect x="136" y="58" width="30" height="14" rx="7" fill="#9be7cf" stroke="#3b2a33" stroke-width="3"/><path d="M151 58v14" stroke="#3b2a33" stroke-width="3"/></g>
+  <!-- face -->
+  <ellipse cx="72" cy="102" rx="7" ry="9" fill="#3b2a33"/>
+  <ellipse cx="128" cy="102" rx="7" ry="9" fill="#3b2a33"/>
+  <circle cx="74" cy="99" r="2.4" fill="#fff"/><circle cx="130" cy="99" r="2.4" fill="#fff"/>
+  <ellipse cx="56" cy="122" rx="11" ry="6" fill="#ffb3cf" opacity=".7"/>
+  <ellipse cx="144" cy="122" rx="11" ry="6" fill="#ffb3cf" opacity=".7"/>
+  <path d="M95 114 h10 l-5 6 z" fill="#ff6fa3" stroke="#3b2a33" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M92 124 q4 6 8 0 q4 6 8 0" fill="none" stroke="#3b2a33" stroke-width="3" stroke-linecap="round"/>
+  <g stroke="#3b2a33" stroke-width="3" stroke-linecap="round">
+    <path d="M30 108 L50 112"/><path d="M28 122 L50 120"/>
+    <path d="M170 108 L150 112"/><path d="M172 122 L150 120"/>
+  </g>
+</svg>
