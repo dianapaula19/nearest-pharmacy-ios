@@ -2,3 +2,6 @@ xcuserdata/
 DerivedData/
 build/
 .DS_Store
+
+# Sanrio artwork: personal local use only, never commit or push
+NearestPharmacy/Assets.xcassets/HelloKitty.imageset/

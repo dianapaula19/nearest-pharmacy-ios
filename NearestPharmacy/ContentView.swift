@@ -8,9 +8,9 @@ struct ContentView: View {
         NavigationStack {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color("Blush"))
-                .navigationTitle("Dr. Mochi's Pharmacies")
-                .searchable(text: $finder.address, placement: .navigationBarDrawer(displayMode: .always), prompt: "Address or city ♡")
+                .background(PolkaDots())
+                .navigationTitle("Hello Kitty's Pharmacies 🎀")
+                .searchable(text: $finder.address, placement: .navigationBarDrawer(displayMode: .always), prompt: "Address or city 🎀")
                 .onSubmit(of: .search) {
                     Task { await finder.searchAddress() }
                 }
@@ -28,15 +28,15 @@ struct ContentView: View {
     private var content: some View {
         switch finder.state {
         case .locating:
-            MochiSays("Sniffing out where you are… 🐾", bouncing: true)
+            KittySays("Looking for where you are… 🎀", bouncing: true)
         case .searching:
-            MochiSays("Checking every pharmacy nearby… ✿", bouncing: true)
+            KittySays("Checking every pharmacy nearby… ✿", bouncing: true)
         case .needsAddress(let message):
-            MochiSays("\(message) I'll find the closest one from there! 💕")
+            KittySays("\(message) I'll find the closest one from there! 💕")
         case .empty:
-            MochiSays("Oh no, no pharmacies within 30 km. Try another address? 🥺")
+            KittySays("Oh no, no pharmacies within 30 km. Try another address? 🥺")
         case .failed(let message):
-            MochiSays("\(message) 😿") {
+            KittySays("\(message) 😿") {
                 Button("Try Again ♡") {
                     Task { await finder.retry() }
                 }
@@ -51,8 +51,8 @@ struct ContentView: View {
     }
 }
 
-/// Dr. Mochi with a speech bubble, used for every non-result state.
-private struct MochiSays<Actions: View>: View {
+/// Hello Kitty with a speech bubble, used for every non-result state.
+private struct KittySays<Actions: View>: View {
     let message: String
     var bouncing = false
     @ViewBuilder var actions: Actions
@@ -71,23 +71,64 @@ private struct MochiSays<Actions: View>: View {
                 .padding(18)
                 .background(.background, in: .rect(cornerRadius: 22))
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(.tint.opacity(0.35), lineWidth: 2))
-            Image("Mochi")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 130)
+            KittyPharmacist(width: 130)
                 .offset(y: up ? -8 : 0)
                 .animation(bouncing ? .easeInOut(duration: 0.5).repeatForever() : .default, value: up)
                 .onAppear { up = bouncing }
-                .accessibilityLabel("Dr. Mochi, the cat pharmacist")
             actions
         }
         .padding(32)
     }
 }
 
-private extension MochiSays where Actions == EmptyView {
+private extension KittySays where Actions == EmptyView {
     init(_ message: String, bouncing: Bool = false) {
         self.init(message, bouncing: bouncing) { EmptyView() }
+    }
+}
+
+/// Hello Kitty wearing a pharmacist's cap with a red cross.
+private struct KittyPharmacist: View {
+    let width: CGFloat
+
+    var body: some View {
+        Image("HelloKitty")
+            .resizable()
+            .scaledToFit()
+            .shadow(color: .black.opacity(0.6), radius: 0.8)
+            .overlay(alignment: .topLeading) {
+                ZStack {
+                    UnevenRoundedRectangle(topLeadingRadius: width * 0.2, topTrailingRadius: width * 0.2)
+                        .fill(.white)
+                        .stroke(.black.opacity(0.75), lineWidth: max(1, width / 60))
+                    Image(systemName: "cross.fill")
+                        .font(.system(size: width * 0.09))
+                        .foregroundStyle(.red)
+                }
+                .frame(width: width * 0.42, height: width * 0.2)
+                .rotationEffect(.degrees(-14))
+                .offset(x: width * 0.1, y: -width * 0.04)
+            }
+            .frame(width: width)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Sanrio-style pink polka dots.
+private struct PolkaDots: View {
+    var body: some View {
+        Canvas { context, size in
+            let step: CGFloat = 40
+            for row in 0...Int(size.height / step) {
+                for column in 0...Int(size.width / step) {
+                    let x = CGFloat(column) * step + (row.isMultiple(of: 2) ? 0 : step / 2)
+                    let dot = CGRect(x: x, y: CGFloat(row) * step, width: 10, height: 10)
+                    context.fill(Path(ellipseIn: dot), with: .color(.pink.opacity(0.18)))
+                }
+            }
+        }
+        .background(Color("Blush"))
+        .ignoresSafeArea()
     }
 }
 
@@ -113,7 +154,7 @@ private struct ResultsView: View {
                     .listRowInsets(EdgeInsets())
             }
             if !others.isEmpty {
-                Section("Also Nearby ✿") {
+                Section("Also Nearby 🎀") {
                     ForEach(others) { pharmacy in
                         PharmacyRow(pharmacy: pharmacy)
                     }
@@ -135,7 +176,7 @@ private struct NearestPharmacyCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("♡ Nearest pharmacy")
+            Text("🎀 Nearest pharmacy")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Text(pharmacy.name)
@@ -149,12 +190,17 @@ private struct NearestPharmacyCard: View {
                 Text(address)
                     .foregroundStyle(.secondary)
             }
-            Button("Directions ✿", systemImage: "pawprint.fill", action: pharmacy.openDirections)
+            Button("Directions 🎀", systemImage: "heart.fill", action: pharmacy.openDirections)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
                 .padding(.top, 4)
         }
         .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .topTrailing) {
+            KittyPharmacist(width: 64)
+                .padding(.top, 12)
+        }
     }
 }
 
@@ -228,11 +274,7 @@ private struct TipView: View {
     var body: some View {
         Button(action: tip.pharmacy.openDirections) {
             HStack(spacing: 12) {
-                Image("Mochi")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 54)
-                    .accessibilityHidden(true)
+                KittyPharmacist(width: 54)
                 Text("**Psst!** \(tip.pharmacy.name) is \(tip.extraMeters.formattedDistance) farther, but it's usually quieter right now. You'd probably be served about \(tip.minutesSaved) min sooner 💨")
                     .font(.subheadline)
                     .foregroundStyle(.primary)
