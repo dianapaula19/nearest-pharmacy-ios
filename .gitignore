@@ -3,5 +3,6 @@ DerivedData/
 build/
 .DS_Store
 
-# Sanrio artwork: personal local use only, never commit or push
+# Sanrio / Game Freak / Nintendo artwork: personal local use only, never commit or push
 NearestPharmacy/Assets.xcassets/HelloKitty.imageset/
+NearestPharmacy/GameArt.xcassets/

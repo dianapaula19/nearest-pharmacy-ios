@@ -37,6 +37,32 @@ final class MockLocation: LocationProviding {
     }
 }
 
+@MainActor
+final class MockTown: TownLoading {
+    var result: Result<Town, Error>
+
+    init(_ result: Result<Town, Error> = .failure(URLError(.notConnectedToInternet))) {
+        self.result = result
+    }
+
+    func town(around center: GeoPoint) async throws -> Town {
+        try result.get()
+    }
+}
+
+@MainActor
+final class MockDirections: WalkingDirections {
+    var result: Result<[GeoPoint], Error>
+
+    init(_ result: Result<[GeoPoint], Error> = .failure(MKError(.directionsNotFound))) {
+        self.result = result
+    }
+
+    func route(from: GeoPoint, to: GeoPoint) async throws -> [GeoPoint] {
+        try result.get()
+    }
+}
+
 private let helsinki = CLLocation(latitude: 60.1699, longitude: 24.9384)
 
 private func pharmacy(_ name: String, _ latitude: Double, _ longitude: Double) -> Pharmacy {
@@ -46,45 +72,104 @@ private func pharmacy(_ name: String, _ latitude: Double, _ longitude: Double) -
 }
 
 @MainActor
+private func makeFinder(
+    _ search: MockSearch,
+    location: MockLocation = MockLocation(.success(helsinki)),
+    town: MockTown = MockTown(),
+    directions: MockDirections = MockDirections()
+) -> PharmacyFinder {
+    PharmacyFinder(search: search, location: location, town: town, directions: directions)
+}
+
+@MainActor
 struct PharmacyFinderTests {
     @Test func sortsPharmaciesNearestFirst() async {
-        let search = MockSearch(.success([
+        let finder = makeFinder(MockSearch(.success([
             pharmacy("Far", 60.2000, 24.9400),
             pharmacy("Near", 60.1700, 24.9390),
             pharmacy("Mid", 60.1800, 24.9400),
-        ]))
-        let finder = PharmacyFinder(search: search, location: MockLocation(.success(helsinki)))
+        ])))
 
         await finder.useCurrentLocation()
 
-        #expect(finder.nearest?.name == "Near")
-        #expect(finder.others.map(\.name) == ["Mid", "Far"])
-        #expect(finder.others.allSatisfy { $0.distance > finder.nearest!.distance })
+        #expect(finder.pharmacies.map(\.name) == ["Near", "Mid", "Far"])
+        #expect(finder.selected?.name == "Near")
+        #expect(finder.pharmacies[0].distance < finder.pharmacies[1].distance)
         #expect(finder.origin == helsinki)
     }
 
-    @Test func limitsTheListToTenAfterTheNearest() async {
+    @Test func showsTheNearestPlusTen() async {
         let many = (0..<25).map { pharmacy("P\($0)", 60.17 + Double($0) * 0.001, 24.94) }
-        let finder = PharmacyFinder(search: MockSearch(.success(many)), location: MockLocation(.success(helsinki)))
+        let finder = makeFinder(MockSearch(.success(many)))
 
         await finder.useCurrentLocation()
 
-        #expect(finder.others.count == PharmacyFinder.listSize)
+        #expect(finder.pharmacies.count == PharmacyFinder.listSize + 1)
+    }
+
+    @Test func selectionWrapsAroundLikeAGameMenu() async {
+        let finder = makeFinder(MockSearch(.success([pharmacy("A", 60.170, 24.939), pharmacy("B", 60.171, 24.939), pharmacy("C", 60.172, 24.939)])))
+        await finder.useCurrentLocation()
+
+        finder.select(1)
+        #expect(finder.selected?.name == "B")
+        finder.select(3)
+        #expect(finder.selected?.name == "A")
+        finder.select(-1)
+        #expect(finder.selected?.name == "C")
+    }
+
+    @Test func routesStraightWhenThereIsNoTownOrDirections() async {
+        let finder = makeFinder(MockSearch(.success([pharmacy("Near", 60.1700, 24.9390)])))
+
+        await finder.useCurrentLocation()
+        await finder.directionsTask?.value
+
+        #expect(finder.town == nil)
+        #expect(finder.route == [GeoPoint(helsinki.coordinate), GeoPoint(lat: 60.1700, lon: 24.9390)])
+    }
+
+    @Test func routesAlongTheTownsStreets() async {
+        let corner = GeoPoint(lat: 60.1699, lon: 24.9390)
+        let streets = Town(
+            roads: [Town.Road(kind: .minor, nodes: [1, 2, 3], points: [GeoPoint(helsinki.coordinate), corner, GeoPoint(lat: 60.1700, lon: 24.9390)])],
+            buildings: []
+        )
+        let finder = makeFinder(MockSearch(.success([pharmacy("Near", 60.1700, 24.9390)])), town: MockTown(.success(streets)))
+
+        await finder.useCurrentLocation()
+        await finder.directionsTask?.value
+
+        #expect(finder.town != nil)
+        #expect(finder.route.contains(corner))
+    }
+
+    @Test func prefersRealWalkingDirections() async {
+        let bridge = GeoPoint(lat: 60.1650, lon: 24.9500)
+        let finder = makeFinder(
+            MockSearch(.success([pharmacy("Across the water", 60.1640, 24.9520)])),
+            directions: MockDirections(.success([GeoPoint(helsinki.coordinate), bridge, GeoPoint(lat: 60.1640, lon: 24.9520)]))
+        )
+
+        await finder.useCurrentLocation()
+        await finder.directionsTask?.value
+
+        #expect(finder.route.contains(bridge))
     }
 
     @Test func showsEmptyStateWhenNothingIsFound() async {
-        let finder = PharmacyFinder(search: MockSearch(.success([])), location: MockLocation(.success(helsinki)))
+        let finder = makeFinder(MockSearch(.success([])))
 
         await finder.useCurrentLocation()
 
         #expect(finder.state == .empty)
-        #expect(finder.nearest == nil)
+        #expect(finder.selected == nil)
     }
 
     @Test(arguments: [LocationError.denied, .restricted, .unavailable])
     func asksForAnAddressWhenLocationIsUnavailable(error: LocationError) async {
         let search = MockSearch(.success([pharmacy("Near", 60.17, 24.939)]))
-        let finder = PharmacyFinder(search: search, location: MockLocation(.failure(error)))
+        let finder = makeFinder(search, location: MockLocation(.failure(error)))
 
         await finder.useCurrentLocation()
 
@@ -97,17 +182,17 @@ struct PharmacyFinderTests {
         let location = MockLocation(.failure(LocationError.denied))
         location.geocoded["Tampere"] = tampere
         let search = MockSearch(.success([pharmacy("Tampereen apteekki", 61.498, 23.761)]))
-        let finder = PharmacyFinder(search: search, location: location)
+        let finder = makeFinder(search, location: location)
 
         finder.address = "  Tampere "
         await finder.searchAddress()
 
         #expect(search.searchedLocations == [tampere])
-        #expect(finder.nearest?.name == "Tampereen apteekki")
+        #expect(finder.selected?.name == "Tampereen apteekki")
     }
 
     @Test func reportsAnUnknownAddress() async {
-        let finder = PharmacyFinder(search: MockSearch(.success([])), location: MockLocation(.success(helsinki)))
+        let finder = makeFinder(MockSearch(.success([])))
 
         finder.address = "Nowhere at all"
         await finder.searchAddress()
@@ -117,7 +202,7 @@ struct PharmacyFinderTests {
 
     @Test func ignoresABlankAddress() async {
         let search = MockSearch(.success([]))
-        let finder = PharmacyFinder(search: search, location: MockLocation(.success(helsinki)))
+        let finder = makeFinder(search)
 
         finder.address = "   "
         await finder.searchAddress()
@@ -128,7 +213,7 @@ struct PharmacyFinderTests {
 
     @Test func showsAnErrorAndRecoversOnRetry() async {
         let search = MockSearch(.failure(URLError(.notConnectedToInternet)))
-        let finder = PharmacyFinder(search: search, location: MockLocation(.success(helsinki)))
+        let finder = makeFinder(search)
 
         await finder.useCurrentLocation()
         #expect(finder.state == .failed(PharmacyFinder.message(for: URLError(.notConnectedToInternet))))
@@ -136,7 +221,7 @@ struct PharmacyFinderTests {
         search.result = .success([pharmacy("Near", 60.17, 24.939)])
         await finder.retry()
 
-        #expect(finder.nearest?.name == "Near")
+        #expect(finder.selected?.name == "Near")
         #expect(search.searchedLocations.count == 2)
     }
 
