@@ -33,13 +33,23 @@ final class PharmacyFinder {
     @ObservationIgnored private var requestID = UUID()
 
     init(
-        search: any PharmacySearching = MapKitPharmacySearch(),
-        location: any LocationProviding = DeviceLocationProvider(),
-        directions: any WalkingDirections = MapKitWalkingDirections()
+        search: any PharmacySearching,
+        location: any LocationProviding,
+        directions: any WalkingDirections
     ) {
         self.search = search
         self.locationProvider = location
         self.directions = directions
+    }
+
+    // Default dependencies are built here, not as default arguments: default-argument expressions
+    // run in a nonisolated context, where these @MainActor initialisers can't be called.
+    convenience init() {
+        self.init(
+            search: MapKitPharmacySearch(),
+            location: DeviceLocationProvider(),
+            directions: MapKitWalkingDirections()
+        )
     }
 
     /// The nearest pharmacies, nearest first.
