@@ -4,6 +4,8 @@ A SwiftUI app that finds the pharmacy nearest to you. It shows the pharmacy's di
 
 Its web counterpart is [nearest-pharmacy-web](https://github.com/dianapaula19/nearest-pharmacy-web).
 
+> **FireRed look.** The app is skinned like a FireRed/LeafGreen battle screen — teal dialogue boxes, cream info panels, a pixel font and HP-style bars — with walking estimates (steps, calories, minutes on foot) under the nearest pharmacy.
+
 ## Run it
 
 Requires Xcode 16 or later (iOS 17+ deployment target). No API keys, packages or signing setup.
@@ -35,7 +37,11 @@ xcodebuild test -project NearestPharmacy.xcodeproj -scheme NearestPharmacy \
 | `PharmacySearch.swift` | `PharmacySearching` protocol and the MapKit implementation: `MKLocalPointsOfInterestRequest` with `MKPointOfInterestFilter(including: [.pharmacy])`, widening 3 → 10 → 30 km only when nothing is found |
 | `LocationProvider.swift` | `LocationProviding` protocol and the Core Location implementation: async wrapper around `CLLocationManager` for permission and a one-shot fix, and `CLGeocoder` for typed addresses |
 | `Pharmacy.swift` | Model wrapping the `MKMapItem`, so **Directions** opens Apple Maps' own place card via `openInMaps` |
-| `ContentView.swift` | Search bar, states (`ContentUnavailableView` with **Try Again**), nearest-pharmacy card, `Map` with markers, list |
+| `ContentView.swift` | Search bar, states (`ContentUnavailableView` with **Try Again**), nearest-pharmacy card, `Map` with markers, list — styled with `Theme` over a Pewter City backdrop, with walking stats |
+| `Theme.swift` | FireRed/LeafGreen styling: colours, panels, HP-style bars and the pixel font |
+| `Estimates.swift` | Walking time, steps and calories; simulated crowd levels |
+| `WalkingDirections.swift` | Apple Maps walking route over streets, footpaths and bridges |
+| `GeoPoint.swift` | A `Hashable` latitude/longitude pair |
 
 Distances come from `CLLocation.distance(from:)` and are formatted with `Measurement`, which follows the user's locale (km or miles).
 
