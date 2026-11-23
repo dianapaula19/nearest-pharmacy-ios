@@ -61,10 +61,16 @@ private func pharmacy(_ name: String, _ latitude: Double, _ longitude: Double) -
 @MainActor
 private func makeFinder(
     _ search: MockSearch,
-    location: MockLocation = MockLocation(.success(helsinki)),
-    directions: MockDirections = MockDirections()
+    location: MockLocation? = nil,
+    directions: MockDirections? = nil
 ) -> PharmacyFinder {
-    PharmacyFinder(search: search, location: location, directions: directions)
+    // Defaults are nil and built here: default-argument expressions run nonisolated and can't
+    // construct these @MainActor mocks.
+    PharmacyFinder(
+        search: search,
+        location: location ?? MockLocation(.success(helsinki)),
+        directions: directions ?? MockDirections()
+    )
 }
 
 @MainActor
